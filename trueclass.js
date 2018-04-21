@@ -26,7 +26,7 @@ $(document).ready(function () {
     var studiedId = "";                                 // 已学节次ID
     var databaseIntervalTime = 1000 * 60 * 5;           // 每5分钟保存数据库视频学习时间点
     var databaseInterval = "";                          // 每分钟保存数据库视频学习时间点定时器
-    var cacheIntervalTime = 1000 * 180;                  // 每180秒保存缓存视频学习时间点
+    var cacheIntervalTime = 1000 * 60 * 3;              // 每3分钟保存缓存视频学习时间点
     var cacheInterval = "";                             // 每30秒保存缓存视频学习时间点定时器
     var totalStudyTimeInterval = "";                    // 累加学习视频时间
     var learningTimeRecordInterval = "";				//3秒钟记录5秒时间段
@@ -41,6 +41,7 @@ $(document).ready(function () {
     var popupPicInterval = "";                          // 弹图定时器
     var tokenFlag = true;								//token是否通过验证标志
     var playRate = 1.0;                                 //视频速率
+    var watchPointPost = "";
     initLoad(); 
     
     
@@ -404,7 +405,7 @@ $(document).ready(function () {
                 PCourseId: PCourseId,
                 chapterId: chapterId,
                 lessonVideoId: lessonVideoId,
-                'userId': userId,
+                userId: userId,
                 videoId: videoId,
                 studyStatus : studyStatus
             },
@@ -444,6 +445,7 @@ $(document).ready(function () {
                 loadPreStudyNoteState = true;
             }
         });
+        watchPointPost = "";
     }
 
 
@@ -536,6 +538,8 @@ $(document).ready(function () {
                 if (data.lessonDtoMap.lessonTestQuestionDtos) {
                     lessonQuestions = data.lessonDtoMap.lessonTestQuestionDtos.split('_')[0];
                     allLessonQuestions = data.lessonDtoMap.lessonTestQuestionDtos.replace('_', ',');
+                }else {
+                    lessonQuestions = "";
                 }
                 //弹图
                 var pictureTimerAndUrls = data.lessonDtoMap.popupPictureDtos;
@@ -1016,9 +1020,10 @@ $(document).ready(function () {
         var sec = currentPlayTime.split(':')[2];
         var currentSec = Number(hour*3600) + Number(min*60) + Number(sec);
         var currentPoint = parseInt(currentSec/5)+2;
-        var key = getWatchPointCookieKey(videoId);
-        var cookValue = ($.cookie(key)==undefined||$.cookie(key)==null)?"0,1,":$.cookie(key)+',';
-        $.cookie(key, cookValue+currentPoint, { expires: 1 });
+        // var key = getWatchPointCookieKey(videoId);
+        var cookValue = (watchPointPost == null || watchPointPost == "") ? "0,1," : watchPointPost + ',';
+        watchPointPost = cookValue+currentPoint;
+        // $.cookie(key, cookValue+currentPoint, { expires: 1 });
     }
     /**
      *  开始统计学习时间和绑定定时保存数据库事件
@@ -1048,7 +1053,7 @@ $(document).ready(function () {
     	learningTimeRecordInterval = setInterval(learningTimeRecord, 1990);
     	// 每4990ms执行一次totalStudyTime
         totalStudyTimeInterval = setInterval(totalStudyTime, 4990);
-        // 定时将学习进度写入缓存(暂定30秒)
+        // 定时将学习进度写入缓存(暂定3分钟)
         cacheInterval = setInterval(saveCacheIntervalTime, cacheIntervalTime);
         // 定时将学习进度写入数据库(暂定5分钟)
         databaseInterval = setInterval(saveDatabaseIntervalTime, databaseIntervalTime);
@@ -1175,7 +1180,7 @@ $(document).ready(function () {
         $.ajax({
             type: "post",
             data: data,
-            url: "/onlineSchool/json/noteContent/findIfHasExecNoteOfLesson?v=" + getNowTime(),
+            url: basePath+ "/json/noteContent/findIfHasExecNoteOfLesson?v=" + getNowTime(),
             success: function (data) {
                 $(".tabhint_ico").remove();
                 if (data.noteContentCount > 0) {
@@ -1933,10 +1938,11 @@ $(document).ready(function () {
             params['__learning_token__'] = Base64.encode(studiedId) ;//studiedId视频学习记录表Id
             params['studyStatus'] = $("#studyStatus").val();
             params['videoId'] = videoId;//视频Id
-            var key = getWatchPointCookieKey(videoId);
-            var watchPoint = $.cookie(key);
+            // var key = getWatchPointCookieKey(videoId);
+            var watchPoint = watchPointPost;
             params['watchPoint'] = watchPoint;
-            $.cookie(key,null, { expires: 0 });
+            watchPointPost = "";
+            // $.cookie(key,null, { expires: 0 });
             var pv = [rid, lessonId, lessonVideoId == null ? 0 : lessonVideoId, videoId];
             params['ev'] = D24444.Z(pv);
             if($("#csrfToken").val() == "" || $("#csrfToken").val() == null){
@@ -1974,7 +1980,7 @@ $(document).ready(function () {
     }
 
     /** 每5分钟保存视频播放时间点* */
-    function saveDatabaseIntervalTime(type, video) {
+    function saveDatabaseIntervalTime(type, video) {//TG破解
 //    	var studyStatus = $("#studyStatus").val();
 //    	//做控制，如果学习状态为1，表示该学生的该门课程已经结束，继续观看视频将不会再继续记录到数据库，by wyj，2016/6/4
 //    	if(studyStatus==1){
@@ -1988,14 +1994,14 @@ $(document).ready(function () {
             var url = basePath + '/json/learning/saveDatabaseIntervalTime?time=' + getNowTime();
             var params = {};
             params['__learning_token__'] = Base64.encode(studiedId) ;
-            params['studiedLessonDto.learnTime'] = currentPlayTime;
-            params['studiedLessonDto.studyTotalTime'] = 97897;
-            params['studiedLessonDto.playTimes'] = 987869;
+            params['studiedLessonDto.learnTime'] = 9999999;
+            params['studiedLessonDto.studyTotalTime'] = 9999999;
+            params['studiedLessonDto.playTimes'] = 9999999;
             params['studiedLessonDto.recruitId'] = rid;
             params['studiedLessonDto.lessonVideoId'] = lessonVideoId;
             params['studiedLessonDto.lessonId'] = lessonId;
             params['studiedLessonDto.videoId'] = videoId;
-            params['studyStatus'] = studyStatus;//是否学习完标志 ， 1-学习完 0-未完成
+            params['studyStatus'] = 1;//是否学习完标志 ， 1-学习完 0-未完成
             params['studiedLessonDto.sourseType'] = 1;//1.pc 2.ios 3.android
             var pv = [rid, lessonId, lessonVideoId == null ? 0 : lessonVideoId, videoId, 1];
             params['ev'] = D24444.Z(pv);
@@ -2232,6 +2238,7 @@ $(document).ready(function () {
                 offsetTop: -10,
                 width: 770,
                 height: 360,
+                zindex : 1000,
                 callback: function ($dialog, $iframe, $parent, opts) {
                     if ($dialog && $iframe && $parent) {
                     }
@@ -2243,28 +2250,29 @@ $(document).ready(function () {
             // 节测试
         } else {
             $.tmDialog.iframe({
-                title: zLocale.test,
-                showBtn: true,
-                showBtnType: 'cancel',
-                buttonValue: zLocale.close,
-                btnArrow: 'center',
-                pos: "absolute",
-                showBtnType: 'cancel',
-                buttonValue: zLocale.close,
-                btnArrow: 'center',
-                url: basePath + "/learning/lessonPopupExam?time=" + time + "&lessonId=" + lessonId + "&rid=" + rid,
-                top: 100,
-                offsetTop: -10,
-                width: 770,
-                height: 360,
-                callback: function ($dialog, $iframe, $parent, opts) {
-                    if ($dialog && $iframe && $parent) {
+                     title: zLocale.test,
+                     showBtn: true,
+                     showBtnType: 'cancel',
+                     buttonValue: zLocale.close,
+                     btnArrow: 'center',
+                     pos: "absolute",
+                     showBtnType: 'cancel',
+                     buttonValue: zLocale.close,
+                     btnArrow: 'center',
+                     url: basePath + "/learning/lessonPopupExam?time=" + time + "&lessonId=" + lessonId + "&rid=" + rid,
+                     top: 100,
+                     offsetTop: -10,
+                     width: 770,
+                     height: 360,
+                     zindex : 1000,
+                     callback: function ($dialog, $iframe, $parent, opts) {
+                         if ($dialog && $iframe && $parent) {
 
-                    } else {
-                        ablePlayerX("mediaplayer").play();
-                    }
-                }
-            });
+                         } else {
+                             ablePlayerX("mediaplayer").play();
+                         }
+                     }
+                 });
         }
     }
 
@@ -2374,7 +2382,7 @@ $(document).ready(function () {
 //                showBtn: false,
 //                manyOverlay: true,
 //                pos: "absolute",
-//                url: "/CreateCourse/web/pages/learning/learningStuTop.jsp?v=" + getNowTime(),
+//                url: "/web/pages/learning/learningStuTop.jsp?v=" + getNowTime(),
 //                top: 50,
 //                width: 600,
 //                height: 525,
@@ -2403,10 +2411,9 @@ $(document).ready(function () {
 //    }
 
     /**
-     * 教学计划跳转
+     * 教学计划
      */
     function jiaoxuejihua() {
-//      var url = '/onlineSchool/course/courseTask?returnType=false&visitType=student&courseId=' + courseId + '&recruitId=' + rid + '&classId=0&courseTaskType=2&courseLearType=2';
         var url =basePath+"/course/timeSheet?courseId="+courseId;
         $("#jiaoxuejihua").click(function () {
             $.tmDialog.iframe({
@@ -2420,20 +2427,10 @@ $(document).ready(function () {
                 width: 900,
                 height: $(window).height() - 150,
                 callback: function ($dialog, $iframe, $parent, opts) {
-                    if ($dialog && $iframe && $parent) {
-                    }
+                    // do nothing...
                 },
                 loadSuccess: function ($iframe, $dialog, opts) {
-                    var $children = $($iframe.document);
-                    var bodyHeight = $children.height() + 100;
-                    var parentHeight = $("body").height();
-                    $dialog.find(".popboxes_main").height($(window).height() - 150);
-                    $dialog.find("#tmDialog_iframe").attr("height", $(window).height() - 150);
-                    if (parentHeight > bodyHeight) {
-                        bodyHeight = parentHeight;
-                    }
-                    $(".popbox_overlay").height(bodyHeight);
-                    $("#popbox_overlay").height(bodyHeight);
+                    // do nothing...
                 }
             });
         });
@@ -2443,20 +2440,23 @@ $(document).ready(function () {
      * 教学大纲
      */
     function jiaoxuedaGang() {
+        var url =basePath+"/learning/outline?courseId="+courseId+"&rid="+$('#rid').val();
         $("#jiaoxuedaGang").click(function () {
             $.tmDialog.iframe({
                 title: zLocale.teach_program,
-                target: $(this), showBtn: false, manyOverlay: true, pos: "absolute",
-                url: basePath + '/learning/outline?courseId=' + courseId + '&rid=' + $('#rid').val(), top: 50, width: 900,
+                target: $(this),
+                showBtn: false,
+                manyOverlay: true,
+                pos: "absolute",
+                url: url,
+                top: 50,
+                width: 900,
                 height: $(window).height() - 120,
                 callback: function ($dialog, $iframe, $parent, opts) {
-                    if ($dialog && $iframe && $parent) {
-
-                    }
+                    // do nothing...
                 },
                 loadSuccess: function ($iframe, $dialog, opts) {
-                    setTimeout(function () {
-                    }, 300);
+                    // do nothing...
                 }
             });
         });
@@ -3343,7 +3343,7 @@ function showQrcode(){
 		$('#_id_mclist_scout_detail').text(vMCStr);
 		
 		//考试内容
-		if(jsonExtend.examContent == "") jsonExtend.examContent = zLocale.not_sure;
+		if(jsonExtend.examContent==null) jsonExtend.examContent = zLocale.not_sure;
 		$('#_id_qimo_exam_content').text(jsonExtend.examContent);
 		
 		//论坛设置
@@ -3433,7 +3433,7 @@ function browserMsg(jquery) {
 
 /**
  * 获得课程学术总策划
- * @author WYJ
+ *
  * @date 2017/4/21 11:18
  * @param
  * @return
